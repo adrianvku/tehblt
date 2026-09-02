@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiempos de espera por especialidad</title>
+<meta name="description" content="Cantidad de interconsultas en lista de espera por especialidad, fecha máxima de espera y citación aproximada para una interconsulta que ingresa hoy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     DATOS. Es lo único que hay que editar cada mes.
+     FECHA_REFERENCIA: fecha del corte de la lista (AAAA-MM-DD).
+     Cada especialidad: nombre, categoría, N° de interconsultas
+     y fecha máxima de espera (AAAA-MM-DD). Si una especialidad
+     no tiene fecha, simplemente no se agrega.
+     ============================================================ -->
+<script>
+const FECHA_REFERENCIA = "2026-09-01";
+const DATOS = [
+  // ---- Especialidades médicas ----
+  { esp: "Oftalmología",                          cat: "medica", sic: 13143, corte: "2021-09-01" },
+  { esp: "Otorrinolaringología",                  cat: "medica", sic: 11274, corte: "2024-09-01" },
+  { esp: "Urología",                              cat: "medica", sic: 7880,  corte: "2023-04-01" },
+  { esp: "Cirugía Vascular",                      cat: "medica", sic: 7381,  corte: "2021-02-01" },
+  { esp: "Traumatología",                         cat: "medica", sic: 6178,  corte: "2025-01-01" },
+  { esp: "Neurocirugía",                          cat: "medica", sic: 6149,  corte: "2024-04-01" },
+  { esp: "Ginecología",                           cat: "medica", sic: 5228,  corte: "2025-09-01" },
+  { esp: "Medicina Interna",                      cat: "medica", sic: 4016,  corte: "2024-11-01" },
+  { esp: "Cardiología",                           cat: "medica", sic: 3856,  corte: "2024-09-01" },
+  { esp: "Cirugía General",                       cat: "medica", sic: 3293,  corte: "2025-06-01" },
+  { esp: "Broncopulmonar",                        cat: "medica", sic: 2979,  corte: "2024-11-01" },
+  { esp: "Gastroenterología",                     cat: "medica", sic: 2671,  corte: "2025-05-01" },
+  { esp: "Cirugía Digestiva Baja",                cat: "medica", sic: 2138,  corte: "2023-10-01" },
+  { esp: "Neurología",                            cat: "medica", sic: 1693,  corte: "2024-10-01" },
+  { esp: "Cirugía Digestiva Alta",                cat: "medica", sic: 1614,  corte: "2024-10-01" },
+  { esp: "Dermatología",                          cat: "medica", sic: 1387,  corte: "2026-02-01" },
+  { esp: "Fisiatría",                             cat: "medica", sic: 967,   corte: "2024-12-01" },
+  { esp: "Endocrinología",                        cat: "medica", sic: 906,   corte: "2026-05-01" },
+  { esp: "Nutriología",                           cat: "medica", sic: 816,   corte: "2025-04-01" },
+  { esp: "Nefrología",                            cat: "medica", sic: 443,   corte: "2026-07-01" },
+  { esp: "Reumatología",                          cat: "medica", sic: 216,   corte: "2026-08-01" },
+  { esp: "Diabetes",                              cat: "medica", sic: 102,   corte: "2026-08-01" },
+  { esp: "Psiquiatría",                           cat: "medica", sic: 94,    corte: "2024-01-01" },
+  { esp: "Cirugía Plástica",                      cat: "medica", sic: 77,    corte: "2026-08-01" },
+  { esp: "Cirugía de Cabeza, Cuello y Maxilofacial", cat: "medica", sic: 41, corte: "2026-08-01" },
+  { esp: "Cirugía de Tórax",                      cat: "medica", sic: 27,    corte: "2026-08-01" },
+  { esp: "Cardiovascular",                        cat: "medica", sic: 6,     corte: "2026-08-01" },
+  // ---- Especialidades odontológicas ----
+  { esp: "Ortodoncia",                            cat: "odonto", sic: 5899,  corte: "2024-01-02" },
+  { esp: "Rehabilitación Prótesis Removible",     cat: "odonto", sic: 4593,  corte: "2025-09-01" },
+  { esp: "Cirugía Maxilofacial",                  cat: "odonto", sic: 2466,  corte: "2025-10-01" },
+  { esp: "Endodoncia",                            cat: "odonto", sic: 947,   corte: "2026-05-01" },
+  { esp: "Rehabilitación Prótesis Fija",          cat: "odonto", sic: 901,   corte: "2025-09-01" },
+  { esp: "Odontopediatría",                       cat: "odonto", sic: 593,   corte: "2025-03-01" },
+  { esp: "Oclusión",                              cat: "odonto", sic: 539,   corte: "2025-12-01" },
+  { esp: "Patología Oral",                        cat: "odonto", sic: 426,   corte: "2025-09-01" },
+  { esp: "Periodoncia",                           cat: "odonto", sic: 303,   corte: "2026-07-12" },
+  { esp: "Implantología",                         cat: "odonto", sic: 145,   corte: "2026-06-01" },
+];
+</script>
+<!-- ============================================================ FIN DATOS -->
+
+<style>
+  :root{
+    --azul:#0B2A6F;        /* azul de la bandera, profundo */
+    --azul-tinta:#071C4A;
+    --rojo:#C8102E;        /* rojo de la bandera */
+    --rojo-suave:#F5DDE0;
+    --blanco:#FFFFFF;
+    --hueso:#F6F4EE;       /* fondo cálido, no cremoso */
+    --lino:#E7E2D6;        /* líneas y bordes */
+    --tinta:#1B1F2A;
+    --tinta-2:#4A5063;
+    --tinta-3:#8A8F9E;
+    --oro:#B8922E;         /* espiga de trigo, se usa poco */
+    --fuente-display:"Fraunces", Georgia, "Times New Roman", serif;
+    --fuente-texto:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ancho:1180px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--hueso); color:var(--tinta);
+    font-family:var(--fuente-texto); font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--azul)}
+  .cinta{ /* cinta tricolor superior */
+    height:6px; display:grid; grid-template-columns:1fr 1fr 2fr;
+  }
+  .cinta span:nth-child(1){background:var(--azul)}
+  .cinta span:nth-child(2){background:var(--blanco)}
+  .cinta span:nth-child(3){background:var(--rojo)}
+
+  /* ------------------ HERO ------------------ */
+  .hero{
+    background:var(--azul-tinta); color:var(--blanco);
+    position:relative; overflow:hidden;
+  }
+  .hero::before{ /* estrella solitaria, muy sutil */
+    content:""; position:absolute; right:-6vw; top:-14vw; width:44vw; height:44vw;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,4 61,38 97,38 68,59 79,94 50,73 21,94 32,59 3,38 39,38' fill='none' stroke='%23FFFFFF' stroke-width='0.6' opacity='0.22'/></svg>") no-repeat center/contain;
+    pointer-events:none;
+  }
+  .hero-in{
+    max-width:var(--ancho); margin:0 auto; padding:64px 24px 48px; position:relative;
+  }
+  .hero h1{
+    font-family:var(--fuente-display); font-weight:300; font-size:clamp(34px,5vw,60px);
+    line-height:1.05; letter-spacing:-0.01em; margin:0 0 18px; max-width:14ch;
+    font-variation-settings:"opsz" 144;
+  }
+  .hero p.lead{
+    font-size:17px; max-width:56ch; margin:0 0 36px; color:#D6DDF0; line-height:1.6;
+  }
+  .hero-datos{
+    display:grid; grid-template-columns:repeat(4,auto); gap:28px 48px; justify-content:start;
+    border-top:1px solid rgba(255,255,255,.18); padding-top:26px; max-width:820px;
+  }
+  .hero-datos div b{
+    display:block; font-family:var(--fuente-display); font-weight:500; font-size:30px;
+    line-height:1.1; color:var(--blanco);
+  }
+  .hero-datos div span{color:#B9C4E4; font-size:14px}
+
+  /* ------------------ CONTROLES ------------------ */
+  .barra{
+    background:var(--blanco); border-bottom:1px solid var(--lino);
+    position:sticky; top:0; z-index:5;
+  }
+  .barra-in{
+    max-width:var(--ancho); margin:0 auto; padding:14px 24px;
+    display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center;
+  }
+  .tabs{display:flex; gap:4px; background:var(--hueso); padding:4px; border-radius:999px}
+  .tabs button{
+    border:0; background:transparent; padding:8px 16px; border-radius:999px;
+    font:inherit; font-weight:500; color:var(--tinta-2); cursor:pointer;
+  }
+  .tabs button[aria-selected="true"]{background:var(--azul); color:var(--blanco)}
+  .tabs button:focus-visible, .buscar:focus-visible, .orden:focus-visible, th button:focus-visible{
+    outline:3px solid var(--rojo); outline-offset:2px;
+  }
+  .buscar{
+    flex:1 1 220px; min-width:180px; max-width:360px;
+    border:1px solid var(--lino); background:var(--hueso); border-radius:8px;
+    padding:10px 14px; font:inherit; color:var(--tinta);
+  }
+  .buscar::placeholder{color:var(--tinta-3)}
+  .orden{
+    border:1px solid var(--lino); background:var(--hueso); border-radius:8px;
+    padding:10px 12px; font:inherit; color:var(--tinta);
+  }
+  .conteo{margin-left:auto; color:var(--tinta-3); font-size:14px}
+
+  /* ------------------ TABLA / LÍNEA DE TIEMPO ------------------ */
+  .main{max-width:var(--ancho); margin:0 auto; padding:36px 24px 72px}
+  .leyenda{
+    display:flex; flex-wrap:wrap; gap:8px 22px; align-items:center;
+    color:var(--tinta-2); font-size:14px; margin:0 0 18px;
+  }
+  .leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:6px}
+  .escala{display:inline-flex; height:14px; width:110px; border-radius:3px; overflow:hidden; vertical-align:-2px; margin-right:6px}
+  .escala span{flex:1}
+
+  table{width:100%; border-collapse:collapse; background:var(--blanco); border:1px solid var(--lino); border-radius:12px; overflow:hidden}
+  thead th{
+    text-align:left; font-weight:500; color:var(--tinta-2); font-size:13px;
+    padding:14px 14px; border-bottom:1px solid var(--lino); background:#FBFAF6;
+    white-space:nowrap;
+  }
+  thead th button{
+    all:unset; cursor:pointer; display:inline-flex; gap:6px; align-items:center;
+  }
+  thead th button::after{content:"↕"; color:var(--tinta-3); font-size:12px}
+  thead th[aria-sort="ascending"] button::after{content:"↑"; color:var(--azul)}
+  thead th[aria-sort="descending"] button::after{content:"↓"; color:var(--azul)}
+  th.num, td.num{text-align:right; font-variant-numeric:tabular-nums}
+  tbody td{padding:13px 14px; border-bottom:1px solid var(--lino); vertical-align:middle}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover td{background:#FCFBF7}
+  td.esp{font-weight:600}
+  td.esp small{display:block; font-weight:400; color:var(--tinta-3); font-size:12px}
+  td.corte b{font-weight:500; display:block}
+  td.corte small{color:var(--tinta-3); font-size:12px}
+  td.hoy b{font-weight:600; display:block; color:var(--azul)}
+  td.hoy small{color:var(--tinta-3); font-size:12px}
+
+  /* línea de tiempo compartida */
+  .tl{width:100%; min-width:260px}
+  .tl-eje{display:flex; justify-content:space-between; font-size:11px; color:var(--tinta-3); padding:0 0 6px}
+  .tl-pista{position:relative; height:14px; background:var(--hueso); border-radius:7px}
+  .tl-pista::after{ /* marca de "hoy" */
+    content:""; position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--tinta);
+    left:var(--hoy); opacity:.55;
+  }
+  .tl-barra{position:absolute; top:0; height:14px; border-radius:7px; left:var(--ini); width:var(--w)}
+  .tl-proy{ /* proyección al futuro: punteada */
+    position:absolute; top:5px; height:4px; left:var(--hoy); width:var(--wp);
+    background:repeating-linear-gradient(90deg, var(--tinta-3) 0 4px, transparent 4px 8px);
+  }
+  .tl-punto{
+    position:absolute; top:2px; width:10px; height:10px; border-radius:50%;
+    background:var(--blanco); border:2px solid var(--azul); left:calc(var(--hoy) + var(--wp) - 5px);
+  }
+  th.tl-h{width:34%}
+
+  .vacio{padding:40px; text-align:center; color:var(--tinta-3)}
+
+  /* ------------------ COMO LEER ------------------ */
+  .como{
+    margin:44px 0 0; display:grid; grid-template-columns:1.2fr 1fr; gap:36px; align-items:start;
+  }
+  .como h2{font-family:var(--fuente-display); font-weight:500; font-size:26px; margin:0 0 12px; letter-spacing:-0.01em}
+  .como p{margin:0 0 12px; color:var(--tinta-2); max-width:62ch}
+  .ejemplo{
+    background:var(--blanco); border:1px solid var(--lino); border-left:4px solid var(--rojo);
+    border-radius:10px; padding:20px 22px;
+  }
+  .ejemplo p{margin:0 0 8px; color:var(--tinta)}
+  .ejemplo p:last-child{margin:0}
+  .ejemplo b{font-family:var(--fuente-display); font-weight:600; font-size:20px; color:var(--azul)}
+
+  /* ------------------ PIE ------------------ */
+  footer{border-top:1px solid var(--lino); background:var(--blanco)}
+  .pie-in{
+    max-width:var(--ancho); margin:0 auto; padding:26px 24px;
+    display:flex; flex-wrap:wrap; gap:8px 24px; justify-content:space-between;
+    color:var(--tinta-3); font-size:13px;
+  }
+  .pie-in b{color:var(--tinta-2); font-weight:500}
+
+  /* ------------------ MÓVIL ------------------ */
+  @media (max-width:820px){
+    .hero-in{padding:44px 20px 36px}
+    .hero-datos{grid-template-columns:1fr 1fr; gap:22px 24px}
+    .como{grid-template-columns:1fr}
+    thead{display:none}
+    table, tbody, tr, td{display:block}
+    table{border-radius:12px}
+    tbody tr{border-bottom:1px solid var(--lino); padding:14px 16px}
+    tbody tr:last-child{border-bottom:0}
+    tbody td{border:0; padding:3px 0}
+    tbody td.num, tbody td.corte, tbody td.hoy{display:flex; justify-content:space-between; gap:12px; text-align:left}
+    tbody td::before{content:attr(data-l); color:var(--tinta-3); font-size:12px}
+    tbody td.esp::before, tbody td.tl-td::before{display:none}
+    td.corte b, td.hoy b{display:inline; text-align:right}
+    td.corte small, td.hoy small{display:none}
+    .tl{margin-top:8px}
+    .conteo{margin-left:0; width:100%}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .tl-barra{transition:width .5s ease}
+  }
+  @media print{
+    .barra{position:static}
+    .hero{background:var(--azul-tinta) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .tl-barra,.tl-pista,.cinta span{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="cinta" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="hero">
+  <div class="hero-in">
+    <h1>Tiempos de espera por especialidad</h1>
+    <p class="lead">
+      Cuántas interconsultas hay en lista de espera no GES, hasta qué fecha de ingreso
+      se está citando hoy, y cuándo sería citada aproximadamente una interconsulta que ingresa hoy.
+      Información referencial para centros de atención primaria y hospitales de la red.
+    </p>
+    <div class="hero-datos">
+      <div><b id="k-total">—</b><span>interconsultas en espera con fecha informada</span></div>
+      <div><b id="k-esp">—</b><span>especialidades informadas</span></div>
+      <div><b id="k-mediana">—</b><span>mediana de espera actual</span></div>
+      <div><b id="k-ref">—</b><span>corte de la lista</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="barra">
+  <div class="barra-in">
+    <div class="tabs" role="tablist" aria-label="Tipo de especialidad">
+      <button role="tab" aria-selected="true" data-cat="todas">Todas</button>
+      <button role="tab" aria-selected="false" data-cat="medica">Médicas</button>
+      <button role="tab" aria-selected="false" data-cat="odonto">Odontológicas</button>
+    </div>
+    <input class="buscar" id="buscar" type="search" placeholder="Buscar especialidad" aria-label="Buscar especialidad">
+    <select class="orden" id="orden" aria-label="Ordenar por">
+      <option value="sic-desc">Más interconsultas primero</option>
+      <option value="espera-desc">Mayor espera primero</option>
+      <option value="espera-asc">Menor espera primero</option>
+      <option value="esp-asc">Nombre A–Z</option>
+    </select>
+    <div class="conteo" id="conteo"></div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="leyenda">
+    <span><span class="escala" aria-hidden="true"><span style="background:#2F6BD8"></span><span style="background:#5B7FCC"></span><span style="background:#8A7FB5"></span><span style="background:#B36A87"></span><span style="background:#C8102E"></span></span>espera actual, de menor a mayor</span>
+    <span><i style="background:var(--tinta);width:2px;height:16px;border-radius:0"></i>hoy</span>
+    <span><i style="background:repeating-linear-gradient(90deg,#8A8F9E 0 4px,transparent 4px 8px);height:4px;vertical-align:2px"></i>proyección para una interconsulta que ingresa hoy</span>
+  </div>
+
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th scope="col" aria-sort="none"><button data-k="esp">Especialidad</button></th>
+        <th scope="col" class="num" aria-sort="descending"><button data-k="sic">Interconsultas</button></th>
+        <th scope="col" aria-sort="none"><button data-k="corte">Fecha máxima de espera</button></th>
+        <th scope="col" class="num" aria-sort="none"><button data-k="espera">Espera actual</button></th>
+        <th scope="col" aria-sort="none"><button data-k="hoy">Si ingresa hoy, citación aprox.</button></th>
+        <th scope="col" class="tl-h">
+          <div class="tl-eje" id="eje"></div>
+        </th>
+      </tr>
+    </thead>
+    <tbody id="cuerpo"></tbody>
+  </table>
+
+  <section class="como" aria-labelledby="como-h">
+    <div>
+      <h2 id="como-h">Cómo leer esta tabla</h2>
+      <p><strong>Fecha máxima de espera</strong> es la fecha de ingreso de las interconsultas que la especialidad está citando actualmente. Las que ingresaron antes de esa fecha ya fueron llamadas o están en proceso.</p>
+      <p><strong>Espera actual</strong> es el tiempo transcurrido entre esa fecha y el corte de la lista. <strong>Si ingresa hoy</strong> suma ese mismo tiempo a la fecha de hoy y estima el mes en que sería citada una interconsulta nueva. Es una proyección: supone que el ritmo de citación se mantiene y no considera prioridad clínica ni cambios de oferta.</p>
+      <p>Corresponde a lista de espera no GES, prioridad mediana. Solo se muestran especialidades con fecha de citación informada. Las interconsultas priorizadas o con sospecha oncológica siguen un flujo distinto y no se reflejan aquí.</p>
+    </div>
+    <div class="ejemplo" id="ejemplo"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="pie-in">
+    <span>Documento referencial, sin valor de citación. <b>Corte de la lista: <span id="pie-ref"></span>.</b></span>
+    <span>Consultado el <span id="pie-hoy"></span> · Elaborado por AVK</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const MS_DIA = 86400000;
+  const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+  const fmtLargo = d => `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  const fmtMes   = d => `${MESES[d.getMonth()]} ${d.getFullYear()}`;
+  const fmtMesC  = d => MESES[d.getMonth()][0].toUpperCase()+MESES[d.getMonth()].slice(1)+" "+d.getFullYear();
+  const fmtN = n => n.toLocaleString("es-CL");
+  const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+
+  const ref = parse(FECHA_REFERENCIA);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  // Enriquecer datos
+  const filas = DATOS.map(d => {
+    const corte = parse(d.corte);
+    const dias = Math.round((ref - corte)/MS_DIA);
+    const meses = Math.round(dias/30.44);
+    const proy = new Date(hoy.getTime() + dias*MS_DIA);
+    return {...d, corteD:corte, dias, meses, proy};
+  });
+
+  // Escala compartida de la línea de tiempo
+  const minD = new Date(Math.min(...filas.map(f => f.corteD)));
+  const maxProy = new Date(Math.max(...filas.map(f => f.proy)));
+  const ejeIni = new Date(minD.getFullYear(), 0, 1);
+  const ejeFin = new Date(maxProy.getFullYear()+1, 0, 1);
+  const span = ejeFin - ejeIni;
+  const pct = d => Math.max(0, Math.min(100, (d - ejeIni)/span*100));
+  const hoyPct = pct(hoy);
+
+  const maxMeses = Math.max(...filas.map(f => f.meses));
+  const color = m => {
+    // azul (corto) → rojo (largo), por rango en años
+    const t = Math.min(1, m / maxMeses);
+    const paradas = [[47,107,216],[91,127,204],[138,127,181],[179,106,135],[200,16,46]];
+    const i = Math.min(3, Math.floor(t*4)); const k = t*4 - i;
+    const c = paradas[i].map((v,j) => Math.round(v + (paradas[i+1][j]-v)*k));
+    return `rgb(${c.join(",")})`;
+  };
+
+  // Eje
+  const eje = document.getElementById("eje");
+  const nY = ejeFin.getFullYear() - ejeIni.getFullYear();
+  const paso = nY > 7 ? 2 : 1;
+  for (let y = ejeIni.getFullYear(); y <= ejeFin.getFullYear(); y += paso){
+    const s = document.createElement("span"); s.textContent = y; eje.appendChild(s);
+  }
+
+  // Cabecera / KPIs
+  const total = filas.reduce((a,f)=>a+f.sic,0);
+  const ordM = [...filas].sort((a,b)=>a.meses-b.meses).map(f=>f.meses);
+  const med = ordM.length%2 ? ordM[(ordM.length-1)/2] : Math.round((ordM[ordM.length/2-1]+ordM[ordM.length/2])/2);
+  document.getElementById("k-total").textContent = fmtN(total);
+  document.getElementById("k-esp").textContent = filas.length;
+  document.getElementById("k-mediana").textContent = med >= 12 ? (Math.round(med/12*10)/10).toString().replace(".",",")+" años" : med+" meses";
+  document.getElementById("k-ref").textContent = ref.getDate()+" "+MESES[ref.getMonth()].slice(0,3)+" "+ref.getFullYear();
+  document.getElementById("pie-ref").textContent = fmtLargo(ref);
+  document.getElementById("pie-hoy").textContent = fmtLargo(hoy);
+
+  // Ejemplo con la especialidad de mayor volumen
+  const ej = [...filas].sort((a,b)=>b.sic-a.sic)[0];
+  document.getElementById("ejemplo").innerHTML =
+    `<p>Ejemplo: <b>${ej.esp}</b></p>
+     <p>Está citando interconsultas ingresadas hasta <b>${fmtMesC(ej.corteD)}</b>, es decir, una espera actual de <b>${esperaTxt(ej.meses)}</b>.</p>
+     <p>Una interconsulta que ingresa hoy sería citada alrededor de <b>${fmtMesC(ej.proy)}</b>, si el ritmo se mantiene.</p>`;
+
+  function esperaTxt(m){
+    if (m < 12) return `${m} ${m===1?"mes":"meses"}`;
+    const a = Math.floor(m/12), r = m%12;
+    return `${a} ${a===1?"año":"años"}${r?` y ${r} ${r===1?"mes":"meses"}`:""}`;
+  }
+
+  // Estado
+  let cat = "todas", q = "", orden = "sic-desc";
+  const cuerpo = document.getElementById("cuerpo");
+  const conteo = document.getElementById("conteo");
+
+  function render(){
+    const [k, dir] = orden.split("-");
+    let lista = filas.filter(f => (cat==="todas" || f.cat===cat) && (!q || norm(f.esp).includes(norm(q))));
+    lista.sort((a,b)=>{
+      let v;
+      if (k==="esp") v = a.esp.localeCompare(b.esp,"es");
+      else if (k==="sic") v = a.sic-b.sic;
+      else v = a.meses-b.meses; // espera, corte y hoy equivalen
+      return dir==="asc" ? v : -v;
+    });
+    conteo.textContent = `${lista.length} de ${filas.length} especialidades`;
+    document.querySelectorAll("thead th[aria-sort]").forEach(th=>{
+      const bk = th.querySelector("button").dataset.k;
+      const activo = bk===k || (k==="espera" && (bk==="corte"||bk==="hoy")) || ((k==="corte"||k==="hoy") && bk==="espera");
+      th.setAttribute("aria-sort", activo ? (dir==="asc"?"ascending":"descending") : "none");
+    });
+    if (!lista.length){
+      cuerpo.innerHTML = `<tr><td colspan="6" class="vacio">Ninguna especialidad coincide con "${q}". Prueba con otro nombre.</td></tr>`;
+      return;
+    }
+    cuerpo.innerHTML = lista.map(f => {
+      const ini = pct(f.corteD), w = Math.max(0.6, hoyPct - ini), wp = pct(f.proy) - hoyPct;
+      return `<tr>
+        <td class="esp">${f.esp}<small>${f.cat==="medica"?"Especialidad médica":"Especialidad odontológica"}</small></td>
+        <td class="num" data-l="Interconsultas">${fmtN(f.sic)}</td>
+        <td class="corte" data-l="Fecha máxima de espera"><b>${fmtMesC(f.corteD)}</b><small>ingresos hasta esa fecha</small></td>
+        <td class="num" data-l="Espera actual">${esperaTxt(f.meses)}</td>
+        <td class="hoy" data-l="Si ingresa hoy"><b>≈ ${fmtMesC(f.proy)}</b><small>citación aproximada</small></td>
+        <td class="tl-td">
+          <div class="tl" role="img" aria-label="Espera de ${esperaTxt(f.meses)}; citación proyectada en ${fmtMes(f.proy)}">
+            <div class="tl-pista" style="--hoy:${hoyPct.toFixed(2)}%">
+              <div class="tl-barra" style="--ini:${ini.toFixed(2)}%;--w:${w.toFixed(2)}%;background:${color(f.meses)}"></div>
+              <div class="tl-proy" style="--hoy:${hoyPct.toFixed(2)}%;--wp:${wp.toFixed(2)}%"></div>
+              <div class="tl-punto" style="--hoy:${hoyPct.toFixed(2)}%;--wp:${wp.toFixed(2)}%"></div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected","false"));
+    b.setAttribute("aria-selected","true"); cat = b.dataset.cat; render();
+  }));
+  document.getElementById("buscar").addEventListener("input", e => { q = e.target.value.trim(); render(); });
+  document.getElementById("orden").addEventListener("change", e => { orden = e.target.value; render(); });
+  document.querySelectorAll("thead th button").forEach(b => b.addEventListener("click", () => {
+    let k = b.dataset.k; if (k==="corte"||k==="hoy") k="espera";
+    const [ck, cd] = orden.split("-");
+    orden = ck===k ? `${k}-${cd==="asc"?"desc":"asc"}` : `${k}-${k==="esp"?"asc":"desc"}`;
+    const sel = document.getElementById("orden");
+    if ([...sel.options].some(o=>o.value===orden)) sel.value = orden;
+    render();
+  }));
+
+  render();
+})();
+</script>
+</body>
+</html>
